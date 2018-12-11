@@ -1,6 +1,8 @@
 <?php
 namespace App\Extend\Cart\Driver;
 
+use App\Extend\Cart\CartItem;
+
 class Mysql implements DriverInterface
 {
     private $CI;
@@ -10,28 +12,13 @@ class Mysql implements DriverInterface
         $this->CI =& get_instance();
     }
 
-    public function save(array $data, $cart_id = null)
+    public function save_item(CartItem $item)
     {
-        if(empty($cart_id)){
-            if(!$this->CI->db->insert('cart', $data)){
-                log_message('error', lang('candy_cart_database_error'));
-                return false;
-            }
-            return true;
-        }else{
-            $this->CI->db->where('cart_id', $cart_id);
-            if(!$this->CI->db->update('cart', $data)){
-                log_message('error', lang('candy_cart_database_error'));
-                return false;
-            }
-            return true;
-        }
-    }
+        $data = $item->get_array();
+        $item_id = $item->item_id;
 
-    public function save_item(array $data, $item_id = null)
-    {
         $cart_id = $data['cart_id'];
-        $this->CI->db->select('SUM(total_price) as total_price, SUM(quantity) as quantity');
+        $this->CI->db->select('total_price, quantity');
         $this->CI->db->where('cart_id', $cart_id);
         $_result = $this->CI->db->get('cart')->result();
         if(empty($_result)){
@@ -94,7 +81,7 @@ class Mysql implements DriverInterface
         }
     }
 
-    public function del($cart_id)
+    public function clear($cart_id)
     {
         $this->CI->db->where('cart_id', $cart_id);
         $_result = $this->CI->db->get('cart')->result();

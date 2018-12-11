@@ -5,9 +5,20 @@
 
 namespace App\Extend\Cart;
 
+use App\Extend\Cart\Driver\Cookie;
+use App\Extend\Cart\Driver\DriverInterface;
+use App\Extend\Cart\Driver\Mysql;
+
 class CandyCart
 {
     protected $CI;
+
+    /**
+     * 购物车存储驱动
+     *
+     * @var  DriverInterface
+     */
+    protected $driver;
 
     protected $user;
 
@@ -17,6 +28,20 @@ class CandyCart
     {
         $this->CI =& get_instance();
 
+        if(array_key_exists('driver', $params)){
+            $driver_name = $params['driver']?: 'mysql';
+            switch ($driver_name){
+                case 'mysql':
+                    $this->driver = new Mysql();
+                    break;
+                case 'cookie':
+                    $this->driver = new Cookie();
+                    break;
+                default:
+                    $this->driver = new Mysql();
+                    break;
+            }
+        }
         if(array_key_exists('user_id', $params)){
             $user_id = $params['user_id'];
             $this->get_user($user_id);
@@ -27,15 +52,24 @@ class CandyCart
             $this->get_user($user_id);
             return $this;
         }
-        if(!empty($this->input->get_post('user_id'))){
-            $user_id = $this->input->get_post('user_id');
+        if(!empty($this->CI->input->get_post('user_id'))){
+            $user_id = $this->CI->input->get_post('user_id');
             $this->get_user($user_id);
             return $this;
+        }
+
+        if(!$this->init()){
+            throw new \Exception('初始化失败');
         }
 
         log_message('info', lang('Class CandyCart initialized.'));
     }
 
+    /**
+     * 初始化一个购物车
+     *
+     * @return bool
+     */
     private function init()
     {
         if (!empty($this->user)) {
@@ -78,36 +112,48 @@ class CandyCart
         }
     }
 
-    public function add($item = [])
+    /**
+     * 添加/更新一个商品
+     *
+     * @param CartItem $item 商品
+     * @return bool
+     */
+    public function add_item(CartItem $item)
     {
-        if(empty($this->cart)){
-            log_message('error', lang('candy_cart_cart_not_initialized'));
-            return false;
-        }
-
-        // the data of cart to update
-        $update_total_price = $this->cart->total_price + $item['total_price'];
-        $update_quantity = $this->cart->quantity + $item['quantity'];
-        $updated_at = date('Y-m-d H:i:s', time());
-        $_update_cart_data = [
-            'quantity' => $update_quantity,
-            'total_price' => $update_total_price,
-            'updated_at' => $updated_at
-        ];
-
-        $item['cart_id'] = $this->cart->cart_id;
-        $this->CI->db->trans_start();
-        $this->CI->db->insert('cart_detail', $item);
-        $this->CI->db->where('cart_id', $this->cart->cart_id)->update('cart', $_update_cart_data);
-        $this->CI->db->trans_complete();
-        if($this->CI->db->trans_status()){
-            return true;
-        }else{
-            log_message('error', lang('candy_cart_database_error'));
-            return false;
-        }
+        $item->cart_id = $item->cart_id?: $this->cart->cart_id;
+        return $this->driver->save_item($item);
     }
 
+    /**
+     * 删除一个商品
+     *
+     * @param mixed $item 商品。可以是 CartItem 类型或 id
+     * @return bool
+     */
+    public function del_item($item)
+    {
+        $item_id = $item;
+        if(is_object($item)){
+            $item_id = $item->item_id;
+        }
+        return $this->driver->del_item($item_id);
+    }
+
+    /**
+     * 清空购物车
+     *
+     * @return bool
+     */
+    public function clear()
+    {
+        return $this->driver->clear($this->cart->cart_id);
+    }
+
+    /**
+     * 获取当前用户
+     *
+     * @param int $user_id
+     */
     private function get_user($user_id)
     {
         $_result = $this->CI->db->where('user_id', $user_id)->get('user')->result();

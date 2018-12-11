@@ -1,3 +1,3 @@
-# 购物车 for Codeigniter
+# 购物车 for Codeigniter3
 
-**开发中**
+Under developing.

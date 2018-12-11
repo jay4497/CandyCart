@@ -1,7 +1,9 @@
 <?php
 namespace App\Extend\Cart\Driver;
 
-class Session implements DriverInterface
+use App\Extend\Cart\CartItem;
+
+class Cookie implements DriverInterface
 {
     private $CI;
 
@@ -10,17 +12,12 @@ class Session implements DriverInterface
         $this->CI =& get_instance();
     }
 
-    public function save(array $data, $cart_id)
+    public function save_item(CartItem $item)
     {
 
     }
 
-    public function save_item(array $data, $item_id)
-    {
-
-    }
-
-    public function del($cart_id)
+    public function clear($cart_id)
     {
 
     }
