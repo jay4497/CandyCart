@@ -1,3 +1,3 @@
-# 购物车 for Codeigniter3
+**deprecated**
 
-Under developing.
+# 购物车 for Codeigniter3
